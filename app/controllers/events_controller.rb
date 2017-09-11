@@ -12,10 +12,12 @@ class EventsController < ApplicationController
       @event = Event.new(event)
       if @event.is_blocked(params[:device_id])
         @event.increment_counter(params[:device_id])
+        logger.info("Event blocked : " + params[:device_id] + " " + @event.name)
       else
         @event.user_id = @user.id
+        @event.created_at = params[:ts] if params[:ts].present?
         if !@event.save
-          log.error("Failed to save event : " + @event)
+          logger.error("Failed to save event : " + @event)
         end
       end
     end
@@ -25,7 +27,7 @@ class EventsController < ApplicationController
 
   def show
     if @user.present?
-      events = @user.events
+      events = @user.events.order_by(:created_at => 'asc')
       render json: events.as_json(:only => [:name, :created_at, :info]), status: :ok
     else
       render status: :not_found, :json => { :msg => "Device ID not found."}
